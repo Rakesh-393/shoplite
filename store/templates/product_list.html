@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="text-primary">🛍️ Products</h2>
+    {% if user.is_staff %}
+    <a href="{% url 'store:dashboard' %}" class="btn btn-outline-primary">📊 Dashboard</a>
+    {% endif %}
+</div>
+
+
+{% if products %}
+    <div class="row">
+        {% for product in products %}
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                        {% if product.image %}
+                            <img src="{{ product.image.url }}" alt="{{ product.name }}" class="img-fluid" style="max-height: 100%; max-width: 100%; object-fit: cover;">
+                        {% else %}
+                            <span style="font-size: 3rem; color: #6c757d;">📦</span>
+                        {% endif %}
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">{{ product.name }}</h5>
+                        <p class="card-text text-muted">{{ product.description }}</p>
+                        <h4 class="text-success">${{ product.price }}</h4>
+                        <button onclick="addToCart({{ product.id }})" class="btn btn-primary w-100">
+                            🛒 Add to Cart
+                        </button>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="text-center py-5">
+        <h3 class="text-muted mb-3">No Products Available</h3>
+        <p class="text-muted mb-4">Start by adding your first product through the admin panel.</p>
+        <a href="/admin/store/product/add/" class="btn btn-primary">Add Product →</a>
+    </div>
+{% endif %}
+
+<!-- Cart Popup -->
+<div id="cartPopup" class="position-fixed top-0 end-0 p-3" style="z-index: 1050; display: none;">
+    <div class="card shadow" style="width: 350px;">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">🛒 Shopping Cart</h6>
+            <button onclick="closeCart()" class="btn-close"></button>
+        </div>
+        <div class="card-body" id="cartItems">
+            <!-- Cart items will be loaded here -->
+        </div>
+        <div class="card-footer">
+            <div class="d-flex justify-content-between">
+                <strong>Total: $<span id="cartTotal">0.00</span></strong>
+                <button class="btn btn-success btn-sm">Checkout</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function addToCart(productId) {
+    {% if user.is_authenticated %}
+        fetch(`/add-to-cart/${productId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showCart(data);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    {% else %}
+        window.location.href = '{% url "accounts:login" %}';
+    {% endif %}
+}
+
+function showCart(data) {
+    const cartItems = document.getElementById('cartItems');
+    const cartTotal = document.getElementById('cartTotal');
+    
+    cartItems.innerHTML = '';
+    
+    data.cart_items.forEach(item => {
+        cartItems.innerHTML += `
+            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                <div>
+                    <small class="fw-bold">${item.name}</small><br>
+                    <small class="text-muted">$${item.price} x ${item.quantity}</small>
+                </div>
+                <span class="badge bg-primary">$${item.total}</span>
+            </div>
+        `;
+    });
+    
+    cartTotal.textContent = data.cart_total;
+    document.getElementById('cartPopup').style.display = 'block';
+    
+    // Update cart count badge in navigation
+    updateCartCount(data.cart_count);
+    
+    // Auto hide after 5 seconds
+    setTimeout(() => {
+        closeCart();
+    }, 5000);
+}
+
+function closeCart() {
+    document.getElementById('cartPopup').style.display = 'none';
+}
+</script>
+
+{% endblock %}

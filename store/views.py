@@ -8,8 +8,22 @@ from django.http import JsonResponse
 
 # Create your views here.
 def product_list(request):
-    products = Product.objects.all()
-    return render(request, 'product_list.html', {'products': products})
+    categories = request.GET.getlist('category')
+    
+    if categories:
+        products = Product.objects.filter(category__in=categories)
+    else:
+        products = Product.objects.all()
+    
+    # Get all available categories for the filter
+    all_categories = Product.CATEGORY_CHOICES
+    
+    context = {
+        'products': products,
+        'all_categories': all_categories,
+        'selected_categories': categories,
+    }
+    return render(request, 'product_list.html', context)
 
 def dashboard(request):
     if not request.user.is_staff:

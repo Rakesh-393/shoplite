@@ -2,7 +2,6 @@
 
 {% block content %}
 
-
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="text-primary">🛍️ Products</h2>
     {% if user.is_staff %}
@@ -10,38 +9,71 @@
     {% endif %}
 </div>
 
-
-{% if products %}
-    <div class="row">
-        {% for product in products %}
-            <div class="col-lg-4 col-md-6 mb-4">
-                <div class="card h-100 shadow-sm">
-                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
-                        {% if product.image %}
-                            <img src="{{ product.image.url }}" alt="{{ product.name }}" class="img-fluid" style="max-height: 100%; max-width: 100%; object-fit: cover;">
-                        {% else %}
-                            <span style="font-size: 3rem; color: #6c757d;">📦</span>
-                        {% endif %}
-                    </div>
-                    <div class="card-body">
-                        <h5 class="card-title">{{ product.name }}</h5>
-                        <p class="card-text text-muted">{{ product.description }}</p>
-                        <h4 class="text-success">${{ product.price }}</h4>
-                        <button onclick="addToCart({{ product.id }})" class="btn btn-primary w-100">
-                            🛒 Add to Cart
-                        </button>
-                    </div>
-                </div>
+<div class="row">
+    <!-- Filter Sidebar -->
+    <div class="col-md-3 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">🔍 Filter by Category</h5>
             </div>
-        {% endfor %}
+            <div class="card-body">
+                <form id="filterForm" method="get">
+                    {% for category_code, category_name in all_categories %}
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" name="category" value="{{ category_code }}" id="{{ category_code }}"
+                               {% if category_code in selected_categories %}checked{% endif %}
+                               onchange="filterProducts()">
+                        <label class="form-check-label" for="{{ category_code }}">
+                            {{ category_name }}
+                        </label>
+                    </div>
+                    {% endfor %}
+                    <button type="button" onclick="clearFilters()" class="btn btn-outline-secondary btn-sm mt-2 w-100">
+                        Clear All
+                    </button>
+                </form>
+            </div>
+        </div>
     </div>
-{% else %}
-    <div class="text-center py-5">
-        <h3 class="text-muted mb-3">No Products Available</h3>
-        <p class="text-muted mb-4">Start by adding your first product through the admin panel.</p>
-        <a href="/admin/store/product/add/" class="btn btn-primary">Add Product →</a>
+    
+    <!-- Products Grid -->
+    <div class="col-md-9">
+        {% if products %}
+            <div class="row">
+                {% for product in products %}
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                                {% if product.image %}
+                                    <img src="{{ product.image.url }}" alt="{{ product.name }}" class="img-fluid" style="max-height: 100%; max-width: 100%; object-fit: cover;">
+                                {% else %}
+                                    <span style="font-size: 3rem; color: #6c757d;">📦</span>
+                                {% endif %}
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title">{{ product.name }}</h5>
+                                <p class="card-text text-muted">{{ product.description }}</p>
+                                <span class="badge bg-secondary mb-2">{{ product.get_category_display }}</span>
+                                <h4 class="text-success">${{ product.price }}</h4>
+                                <button onclick="addToCart({{ product.id }})" class="btn btn-primary w-100">
+                                    🛒 Add to Cart
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <h3 class="text-muted mb-3">No Products Found</h3>
+                <p class="text-muted mb-4">Try adjusting your filters or add products through the admin panel.</p>
+                {% if user.is_staff %}
+                <a href="/admin/store/product/add/" class="btn btn-primary">Add Product →</a>
+                {% endif %}
+            </div>
+        {% endif %}
     </div>
-{% endif %}
+</div>
 
 <!-- Cart Popup -->
 <div id="cartPopup" class="position-fixed top-0 end-0 p-3" style="z-index: 1050; display: none;">
@@ -63,6 +95,16 @@
 </div>
 
 <script>
+function filterProducts() {
+    document.getElementById('filterForm').submit();
+}
+
+function clearFilters() {
+    const checkboxes = document.querySelectorAll('input[name="category"]');
+    checkboxes.forEach(checkbox => checkbox.checked = false);
+    window.location.href = window.location.pathname;
+}
+
 function addToCart(productId) {
     {% if user.is_authenticated %}
         fetch(`/add-to-cart/${productId}/`, {
